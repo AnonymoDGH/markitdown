@@ -6,6 +6,7 @@ import shutil
 import traceback
 import io
 from dataclasses import dataclass
+from email.message import Message
 from importlib.metadata import entry_points
 from typing import Any, List, Dict, Optional, Union, BinaryIO
 from pathlib import Path
@@ -516,9 +517,10 @@ class MarkItDown:
         filename: Optional[str] = None
         extension: Optional[str] = None
         if "content-disposition" in response.headers:
-            m = re.search(r"filename=([^;]+)", response.headers["content-disposition"])
-            if m:
-                filename = m.group(1).strip("\"'")
+            filename = self._filename_from_content_disposition(
+                response.headers["content-disposition"]
+            )
+            if filename:
                 _, _extension = os.path.splitext(filename)
                 if len(_extension) > 0:
                     extension = _extension
@@ -561,6 +563,12 @@ class MarkItDown:
             file_stream=buffer, base_guess=base_guess
         )
         return self._convert(file_stream=buffer, stream_info_guesses=guesses, **kwargs)
+
+    def _filename_from_content_disposition(self, header: str) -> Optional[str]:
+        message = Message()
+        message["content-disposition"] = header
+        filename = message.get_filename()
+        return filename.strip() if filename else None
 
     def _convert(
         self, *, file_stream: BinaryIO, stream_info_guesses: List[StreamInfo], **kwargs

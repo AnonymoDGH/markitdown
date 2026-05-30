@@ -5,10 +5,11 @@ import sys
 import shutil
 import traceback
 import io
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from email.message import Message
 from importlib.metadata import entry_points
-from typing import Any, List, Dict, Optional, Union, BinaryIO
+from typing import Any, Iterable, List, Dict, Optional, Sequence, Union, BinaryIO
 from pathlib import Path
 from urllib.parse import urlparse
 from warnings import warn
@@ -326,6 +327,35 @@ class MarkItDown:
             raise TypeError(
                 f"Invalid source type: {type(source)}. Expected str, requests.Response, BinaryIO."
             )
+
+    def convert_many(
+        self,
+        sources: Iterable[Union[str, requests.Response, Path, BinaryIO]],
+        *,
+        stream_infos: Optional[Sequence[Optional[StreamInfo]]] = None,
+        max_workers: Optional[int] = None,
+        **kwargs: Any,
+    ) -> List[DocumentConverterResult]:
+        source_list = list(sources)
+        if stream_infos is None:
+            stream_info_list: List[Optional[StreamInfo]] = [None] * len(source_list)
+        else:
+            stream_info_list = list(stream_infos)
+            if len(stream_info_list) != len(source_list):
+                raise ValueError("stream_infos must have the same length as sources")
+
+        def convert_one(
+            args: tuple[Any, Optional[StreamInfo]]
+        ) -> DocumentConverterResult:
+            source, stream_info = args
+            return self.convert(source, stream_info=stream_info, **kwargs)
+
+        jobs = list(zip(source_list, stream_info_list))
+        if max_workers == 1 or len(jobs) <= 1:
+            return [convert_one(job) for job in jobs]
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            return list(executor.map(convert_one, jobs))
 
     def convert_local(
         self,

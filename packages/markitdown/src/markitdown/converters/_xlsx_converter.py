@@ -10,7 +10,7 @@ from .._stream_info import StreamInfo
 _xlsx_dependency_exc_info = None
 try:
     import pandas as pd
-    import openpyxl  # noqa: F401
+    import openpyxl
 except ImportError:
     _xlsx_dependency_exc_info = sys.exc_info()
 
@@ -81,6 +81,8 @@ class XlsxConverter(DocumentConverter):
             )
 
         sheets = pd.read_excel(file_stream, sheet_name=None, engine="openpyxl")
+        self._apply_excel_number_formats(file_stream, sheets)
+
         md_content = ""
         for s in sheets:
             md_content += f"## {s}\n"
@@ -93,6 +95,56 @@ class XlsxConverter(DocumentConverter):
             )
 
         return DocumentConverterResult(markdown=md_content.strip())
+
+    def _apply_excel_number_formats(
+        self, file_stream: BinaryIO, sheets: dict[str, Any]
+    ) -> None:
+        cur_pos = file_stream.tell()
+        try:
+            file_stream.seek(0)
+            workbook = openpyxl.load_workbook(
+                file_stream, data_only=True, read_only=True
+            )
+            for sheet_name, frame in sheets.items():
+                if sheet_name not in workbook.sheetnames:
+                    continue
+
+                worksheet = workbook[sheet_name]
+                frame = frame.astype(object)
+                sheets[sheet_name] = frame
+                for row_idx in range(len(frame.index)):
+                    for col_idx in range(len(frame.columns)):
+                        cell = worksheet.cell(row=row_idx + 2, column=col_idx + 1)
+                        formatted = self._format_currency_cell(
+                            frame.iat[row_idx, col_idx], cell.number_format
+                        )
+                        if formatted is not None:
+                            frame.iat[row_idx, col_idx] = formatted
+        finally:
+            file_stream.seek(cur_pos)
+
+    def _format_currency_cell(self, value: Any, number_format: str) -> str | None:
+        if not isinstance(value, (int, float)):
+            return None
+
+        symbol = self._currency_symbol(number_format)
+        if symbol is None:
+            return None
+
+        if ".00" in number_format or "0.00" in number_format:
+            amount = f"{value:,.2f}"
+        elif float(value).is_integer():
+            amount = f"{int(value):,}"
+        else:
+            amount = f"{value:,}"
+
+        return f"{symbol}{amount}"
+
+    def _currency_symbol(self, number_format: str) -> str | None:
+        for symbol in ["$", "€", "£", "¥", "₹"]:
+            if symbol in number_format:
+                return symbol
+        return None
 
 
 class XlsConverter(DocumentConverter):

@@ -28,6 +28,7 @@ from .converters import (
     IpynbConverter,
     BingSerpConverter,
     PdfConverter,
+    DocConverter,
     DocxConverter,
     XlsxConverter,
     XlsConverter,
@@ -37,6 +38,7 @@ from .converters import (
     OutlookMsgConverter,
     ZipConverter,
     EpubConverter,
+    EmlConverter,
     DocumentIntelligenceConverter,
     ContentUnderstandingConverter,
     CsvConverter,
@@ -192,6 +194,7 @@ class MarkItDown:
             self.register_converter(WikipediaConverter())
             self.register_converter(YouTubeConverter())
             self.register_converter(BingSerpConverter())
+            self.register_converter(DocConverter())
             self.register_converter(DocxConverter())
             self.register_converter(XlsxConverter())
             self.register_converter(XlsConverter())
@@ -202,6 +205,7 @@ class MarkItDown:
             self.register_converter(PdfConverter())
             self.register_converter(OutlookMsgConverter())
             self.register_converter(EpubConverter())
+            self.register_converter(EmlConverter())
             self.register_converter(CsvConverter())
 
             # Register Document Intelligence converter at the top of the stack if endpoint is provided

@@ -38,6 +38,7 @@ from .converters import (
     OutlookMsgConverter,
     ZipConverter,
     EpubConverter,
+    EmlConverter,
     DocumentIntelligenceConverter,
     ContentUnderstandingConverter,
     CsvConverter,
@@ -204,6 +205,7 @@ class MarkItDown:
             self.register_converter(PdfConverter())
             self.register_converter(OutlookMsgConverter())
             self.register_converter(EpubConverter())
+            self.register_converter(EmlConverter())
             self.register_converter(CsvConverter())
 
             # Register Document Intelligence converter at the top of the stack if endpoint is provided
